@@ -65,6 +65,13 @@ protected:
    double m_bestKnownLB;
    double m_bestKnownUB;
 
+protected:
+   std::function<DecompSolverStatus(const int whichBlock,
+                                           const double *redCostX,
+                                           const double target,
+                                           DecompVarList &varList)>
+       m_callbackSolveRelaxed;
+
 public:
 
    /** Number of Blocks
@@ -345,6 +352,11 @@ public:
                                            const double*      redCostX,
 					   const double       target,
                                            DecompVarList&     varList) {
+      if (m_callbackSolveRelaxed != NULL)
+      {
+         return m_callbackSolveRelaxed(whichBlock, redCostX, target, varList);
+      }
+
       return DecompSolStatNoSolution;
    }
    virtual DecompSolverStatus solveRelaxedNest(const int          whichBlock,
@@ -354,7 +366,33 @@ public:
       return DecompSolStatNoSolution;
    }
 
+   //-----------------------------------------------------------------------//
+   /**
+    * @name Callback methods
+    * @{
+    */
+   //-----------------------------------------------------------------------//
+public:
+   inline const std::function<DecompSolverStatus(const int whichBlock,
+                                           const double *redCostX,
+                                           const double target,
+                                           DecompVarList &varList)>
+   getCallbackSolveRelaxed() const
+   {
+      return m_callbackSolveRelaxed;
+   }
 
+   inline void setCallbackSolveRelaxed(std::function<DecompSolverStatus(const int whichBlock,
+                                           const double *redCostX,
+                                           const double target,
+                                           DecompVarList &varList)>
+                                           callbackSolveRelaxed)
+   {
+      m_callbackSolveRelaxed = callbackSolveRelaxed;
+   }
+
+
+public:
    virtual void printOriginalColumn(const int   index,
                                     std::ostream*    os = &std::cout) const;
 
@@ -444,6 +482,7 @@ public:
       m_osLog      (&std::cout  ),
       m_bestKnownLB(-1e75  ),
       m_bestKnownUB( 1e75  ),
+      m_callbackSolveRelaxed( NULL ),
       NumBlocks    (  0    ),
       m_utilParam  (&utilParam),
       m_objective  ( NULL  ),

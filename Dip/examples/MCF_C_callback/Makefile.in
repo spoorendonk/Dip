@@ -4,86 +4,56 @@
 # Decomp is distributed under the Common Public License as part of the      #
 # COIN-OR repository (http://www.coin-or.org).                              #
 #                                                                           #
-# Authors: Matthew Galati, SAS Institute Inc.                               #
-#          Ted Ralphs, Lehigh University                                    #
-#          Jiadong Wang, Lehigh University                                  #
+# Author: Matthew Galati, SAS Institute Inc. (matthew.galati@sas.com)       #
 #                                                                           #
 # Copyright (C) 2002-2019, Lehigh University, Matthew Galati, and Ted Ralphs#
 # All Rights Reserved.                                                      #
 #===========================================================================#
 
 ###########################################################################
-# C++ Compiler command and flags
+# CHANGEME: Put the name of your executable here
 ###########################################################################
 
-CXX = @CXX@
-CC = @CC@
-
-CXXFLAGS = @CXXFLAGS@
-
-CXXLINKFLAGS = @RPATH_FLAGS@
+EXE = decomp_mcf@EXEEXT@
 
 ###########################################################################
-# directories for finding COIN packages
+# CHANGEME: Put the names of source files here
 ###########################################################################
 
-COININCDIR = @abs_include_dir@/coin
-
-COINLIBDIR = @abs_lib_dir@
+OBJS          = MCF_Main.@OBJEXT@
 
 ###########################################################################
-# The following is necessary under cygwin, if native compilers are used
+# CHANGEME: Put the directories to find the source files here
 ###########################################################################
 
-CYGPATH_W = @CYGPATH_W@
+SRCDIR = @srcdir@
+VPATH = @srcdir@
 
 ###########################################################################
-# define DECOMP libs
+# CHANGEME: Put any additional flags here
 ###########################################################################
 
-COIN_HAS_PKGCONFIG = @COIN_HAS_PKGCONFIG_TRUE@TRUE
-
-ifeq ($(COIN_HAS_PKGCONFIG),TRUE)
-LIBS += `PKG_CONFIG_PATH=@COIN_PKG_CONFIG_PATH@ @PKG_CONFIG@ --libs dip`
-else
-LIBS += -L@abs_lib_dir@ -lDecomp @DIPLIB_LIBS_INSTALLED@
-endif
-
-CFLAGS += -DCOIN_ASSERT
+CFLAGS =
 
 ###########################################################################
-# define CFLAGS
+# CHANGEME: Put any additional libraries here
 ###########################################################################
 
-CFLAGS += -I`$(CYGPATH_W) $(COININCDIR)`
-
-ifeq ($(COIN_HAS_PKGCONFIG),TRUE)
-CFLAGS += `PKG_CONFIG_PATH=@COIN_PKG_CONFIG_PATH@ @PKG_CONFIG@ --cflags dip`
-else
-CFLAGS += @DIPLIB_CFLAGS_INSTALLED@
-endif
+LIBS =
 
 ###########################################################################
-# default targets
+# CHANGEME: Put any additional dependencies for the executable here.
+#           These should be accompanied by custom targets to build them.
 ###########################################################################
 
-all: $(EXE)
+DEPS =
 
-.SUFFIXES: .cpp .c .o .obj
+###########################################################################
+# include default COIN flags, library options, and targets
+###########################################################################
 
-$(EXE): $(OBJS) $(DEPS)
-	bla=;\
-	for file in $(OBJS); do bla="$$bla `$(CYGPATH_W) $$file`"; done; \
-	$(CXX) $(CXXLINKFLAGS) $(CXXFLAGS) -o $@ $$bla $(LIBS) $(ADDLIBS)
+include ../Makefile.Examples
 
-clean:
-	rm -rf $(EXE) $(OBJS)
-
-.cpp.o:
-	$(CXX) $(CXXFLAGS) $(CFLAGS) -c -o $@ `test -f '$<' || echo '$(SRCDIR)/'`$<
-
-.c.o:
-	$(CC) $(CFLAGS) -c -o $@ `test -f '$<' || echo '$(SRCDIR)/'`$<
-
-.cpp.obj:
-	$(CXX) $(CXXFLAGS) $(CFLAGS) -c -o $@ `if test -f '$<'; then $(CYGPATH_W) '$<'; else $(CYGPATH_W) '$(SRCDIR)/$<'; fi`
+###########################################################################
+# CHANGEME: Customized targets
+###########################################################################

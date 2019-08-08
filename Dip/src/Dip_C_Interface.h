@@ -13,6 +13,12 @@ extern "C"
     typedef struct AlpsDecompModel AlpsDecompModel;
     typedef struct DecompVar DecompVar;
 
+    typedef int Dip_callback_SolvedRelaxed(const int whichBlock,
+                                           const double *redCostX,
+                                           const double target,
+                                           DecompVar ***varList,
+                                           int *n);
+
     //===========================================================================//
     // UtilParameters
     //===========================================================================//
@@ -40,6 +46,7 @@ extern "C"
                                      const char *modelName,
                                      const int blockId);
     double Dip_DecompApp_getInfinity(DecompApp *app);
+    void Dip_DecompApp_setCallbackSolveRelaxed(DecompApp *app, Dip_callback_SolvedRelaxed *func);
     //===========================================================================//
 
     //===========================================================================//

@@ -86,6 +86,33 @@ extern "C"
     {
         return app->m_infinity;
     }
+
+    // TODO make a handler per app to set callbacks on multiple apps
+    Dip_callback_SolvedRelaxed *Dip_callback_SolvedRelaxed_func;
+    DecompSolverStatus Dip_callback_SolvedRelaxed_wrapper(const int whichBlock,
+                                                          const double *redCostX,
+                                                          const double target,
+                                                          DecompVarList &varList)
+    {
+        DecompVar **vars = NULL;
+        int n;
+        int status = Dip_callback_SolvedRelaxed_func(whichBlock, redCostX, target, &vars, &n);
+
+        for (int i = 0; i < n; i++)
+            varList.push_back(vars[i]);
+
+        if (vars)
+            delete vars;
+
+        return (DecompSolverStatus)status;
+    }
+
+    void Dip_DecompApp_setCallbackSolveRelaxed(DecompApp *app, Dip_callback_SolvedRelaxed *func)
+    {
+        Dip_callback_SolvedRelaxed_func = func;
+        app->setCallbackSolveRelaxed(Dip_callback_SolvedRelaxed_wrapper);
+    }
+
     //===========================================================================//
 
     //===========================================================================//

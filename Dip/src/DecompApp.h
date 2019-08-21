@@ -33,19 +33,62 @@ extern "C" {
 //===========================================================================//
 class DecompAlgo;
 
-typedef std::function<DecompSolverStatus(
-    const DecompApp *app,
-    const int whichBlock,
-    const double *redCostX,
-    const double target,
-    DecompVarList &varList)>
-    DecompCallbackSolveRelaxed;
+enum DecompCallbackWhere{
+   MIPSOL_FEAS,
+   MIPSOL_HEUR,
+   INITVARS,
+   MIPVARS,
+   MIPCUTS
+};
 
-typedef std::function<int(
-    const DecompApp *app,
-    const double *x,
-    DecompCutList &newCuts)>
-    DecompCallbackGenerateCuts;
+enum DecompCallbackWhat{
+   MIPSOL_STATUS,
+   MIPSOL_X,
+   MIPSOL_XOBJ,
+   MIPSOL_NUMCOLS,
+   MIPSOL_TOLZERO,
+   MIPSOL_ADD,
+   MIPVARS_ADD,
+   MIPCUTS_ADD
+};
+
+class DecompCallbackData
+{
+public:
+   virtual const int getInt(DecompCallbackWhere where, DecompCallbackWhat what)
+   {
+      throw std::invalid_argument("'where' and 'what' must match");
+   }
+   virtual const int *getInts(DecompCallbackWhere where, DecompCallbackWhat what)
+   {
+      throw std::invalid_argument("'where' and 'what' must match");
+   }
+   virtual const double getDouble(DecompCallbackWhere where, DecompCallbackWhat what)
+   {
+      throw std::invalid_argument("'where' and 'what' must match");
+   }
+   virtual const double *getDoubles(DecompCallbackWhere where, DecompCallbackWhat what)
+   {
+      throw std::invalid_argument("'where' and 'what' must match");
+   }
+
+   virtual void setSolutionStatus(DecompCallbackWhere where, DecompCallbackWhat what, bool isFeasible)
+   {
+      throw std::invalid_argument("'where' and 'what' must match");
+   }
+   virtual void setSolution(DecompCallbackWhere where, DecompCallbackWhat what, DecompSolution *sol)
+   {
+      throw std::invalid_argument("'where' and 'what' must match");
+   }
+   virtual void addCut(DecompCallbackWhere where, DecompCallbackWhat what, DecompCut *cut)
+   {
+      throw std::invalid_argument("'where' and 'what' must match");
+   }
+   virtual void addVar(DecompCallbackWhere where, DecompCallbackWhat what, DecompVar *var)
+   {
+      throw std::invalid_argument("'where' and 'what' must match");
+   }
+};
 
 //===========================================================================//
 /*!
@@ -78,9 +121,6 @@ protected:
     */
    double m_bestKnownLB;
    double m_bestKnownUB;
-
-   DecompCallbackSolveRelaxed m_callbackSolveRelaxed;
-   DecompCallbackGenerateCuts m_callbackGenerateCuts;
 
 public:
 
@@ -353,10 +393,6 @@ public:
    int generateCuts(const double *x,
                             DecompCutList &newCuts)
    {
-      if (m_callbackGenerateCuts != NULL)
-      {
-         return m_callbackGenerateCuts(this, x, newCuts);
-      }
       return 0;
    }
 
@@ -369,11 +405,6 @@ public:
                                            const double*      redCostX,
 					   const double       target,
                                            DecompVarList&     varList) {
-      if (m_callbackSolveRelaxed != NULL)
-      {
-         return m_callbackSolveRelaxed(this, whichBlock, redCostX, target, varList);
-      }
-
       return DecompSolStatNoSolution;
    }
    virtual DecompSolverStatus solveRelaxedNest(const int          whichBlock,
@@ -385,18 +416,41 @@ public:
 
    //-----------------------------------------------------------------------//
    /**
-    * @name Callback methods
+    * @name Callback method
     * @{
     */
    //-----------------------------------------------------------------------//
-   inline void setCallbackSolveRelaxed(DecompCallbackSolveRelaxed callback)
-   {
-      m_callbackSolveRelaxed = callback;
-   }
+protected:
+   std::function<void(DecompApp*, DecompCallbackWhere, DecompCallbackData&)> m_callbackFn;
 
-   inline void setCallbackGenerateCuts(DecompCallbackGenerateCuts callback)
+public:
+   virtual void callback(DecompCallbackWhere where, DecompCallbackData& data){
+         // ---
+         // --- By default this function calls the callbackFn if any,
+         // --- otherwise it does nothing
+         // ---
+         UtilPrintFuncBegin(m_osLog, m_classTag,
+                  "defaultCallback()", m_param.LogDebugLevel, 2);
+
+         if (m_param.LogDebugLevel >= 3) {
+            (*m_osLog) << "DecompCallbackWhere: " << where << std::endl; 
+         }
+
+         if(m_callbackFn != NULL){
+            if (m_param.LogDebugLevel >= 3) {
+               (*m_osLog) << "Calling callback function" << std::endl;
+            }
+
+            m_callbackFn(this, where, data);
+         }
+
+         UtilPrintFuncEnd(m_osLog, m_classTag,
+                  "defaultCallback()", m_param.LogDebugLevel, 2);
+   }
+   
+   void setCallback(std::function<void(DecompApp*, DecompCallbackWhere, DecompCallbackData&)> callback)
    {
-      m_callbackGenerateCuts = callback;
+      m_callbackFn = callback;
    }
 
 public:
@@ -413,8 +467,6 @@ public:
    /**
     * @}
     */
-
-
 
 public:
 
@@ -489,15 +541,14 @@ public:
       m_osLog      (&std::cout  ),
       m_bestKnownLB(-1e75  ),
       m_bestKnownUB( 1e75  ),
-      m_callbackSolveRelaxed( NULL ),
-      m_callbackGenerateCuts( NULL ),
       NumBlocks    (  0    ),
       m_utilParam  (&utilParam),
       m_objective  ( NULL  ),
       m_modelCore  (utilParam),
       m_matrix     ( NULL  ),
       m_modelC     ( NULL  ),
-      m_threadIndex(  0    )
+      m_threadIndex(  0    ),
+      m_callbackFn ( NULL )
    {
       //---
       //--- get application parameters

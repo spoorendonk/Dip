@@ -47,6 +47,139 @@ int MyGenerateCutsCallback( const DecompApp *app,
 }
 };
 
+
+
+class DecompCallbackDataSolStatus : public DecompCallbackData
+{
+private:
+   const double *m_x;
+   int m_numCols;
+   double m_tolZero;
+   bool m_isFeasible = true;
+
+public:
+   void set(const double *x,
+            const int numCols,
+            const double tolZero)
+   {
+      m_x = x;
+      m_numCols = numCols;
+      m_tolZero = tolZero;
+      m_isFeasible = true;
+   }
+
+   bool get(){
+      return m_isFeasible;
+   }
+
+   const int getInt(DecompCallbackWhere where, DecompCallbackWhat what)
+   {
+      if (where == MIPSOL_FEAS && what == MIPSOL_NUMCOLS)
+      {
+         return m_numCols;
+      }
+
+      return DecompCallbackData::getInt(where, what);
+   }
+
+   const double getDouble(DecompCallbackWhere where, DecompCallbackWhat what)
+   {
+      if (where == MIPSOL_FEAS && what == MIPSOL_TOLZERO)
+      {
+         return m_tolZero;
+      }
+
+      return DecompCallbackData::getDouble(where, what);
+   }
+   const double *getDoubles(DecompCallbackWhere where, DecompCallbackWhat what)
+   {
+      if (where == MIPSOL_FEAS && what == MIPSOL_X)
+      {
+         return m_x;
+      }
+
+      return DecompCallbackData::getDoubles(where, what);
+   }
+
+   void setSolutionStatus(DecompCallbackWhere where, DecompCallbackWhat what, bool isFeasible)
+   {
+      if(where == MIPSOL_FEAS && what == MIPSOL_STATUS){
+         m_isFeasible = isFeasible;
+      }
+      
+      DecompCallbackData::setSolutionStatus(where, what, isFeasible);
+   }
+};
+
+// class DecompCallbackDataSol : public DecompCallbackData{
+//    public:
+//       DecompCallbackWhere where = GENERATE_VARS;
+// };
+
+// class DecompCallbackDataVars : public DecompCallbackData{
+//    public:
+//       DecompCallbackWhere where = GENERATE_VARS;
+// };
+
+// class DecompCallbackDataCuts : public DecompCallbackData{
+//    public:
+//       DecompCallbackWhere where = GENERATE_CUTS;
+// };
+
+void myCallback(DecompApp* app, DecompCallbackWhere where, DecompCallbackData& data){
+   std::cout << "myCallback " << where << std::endl;
+         
+   if(where == DecompCallbackWhere::MIPSOL_FEAS){
+      const int numCols = data.getInt(where, DecompCallbackWhat::MIPSOL_NUMCOLS);
+      const double* x = data.getDoubles(where, DecompCallbackWhat::MIPSOL_X);
+      const double tolZero = data.getDouble(where, DecompCallbackWhat::MIPSOL_TOLZERO);
+
+      // dostuff
+      bool isFeasible = true;
+
+      data.setSolutionStatus(where, DecompCallbackWhat::MIPSOL_STATUS, isFeasible);
+   }
+
+   if(where == DecompCallbackWhere::MIPSOL_HEUR){
+      const double* xhat = data.getDoubles(where, DecompCallbackWhat::MIPSOL_X);
+      const double* origCost = data.getDoubles(where, DecompCallbackWhat::MIPSOL_XOBJ);
+
+      // dostuff
+      DecompSolution *sol;
+
+      data.setSolution(where, DecompCallbackWhat::MIPSOL_ADD, sol);
+   }
+
+   if(where == DecompCallbackWhere::INITVARS){
+      // dostuff
+      DecompVar *var;
+
+      data.addVar(where, DecompCallbackWhat::MIPVARS_ADD, var);
+   }
+
+   if(where == DecompCallbackWhere::MIPVARS){
+      const int whichBlock = data.getInt(where, DecompCallbackWhat::MIPVARS_BLOCK);
+      const double* redCostX = data.getDoubles(where, DecompCallbackWhat::MIPVARS_REDCOSTX);
+		const double target = data.getDouble(where, DecompCallbackWhat::MIPVARS_TARGET);
+
+      // dostuff
+      DecompVar *var;
+      DecompSolverStatus status = DecompSolStatNoSolution;
+
+      data.addVar(where, DecompCallbackWhat::MIPVARS_ADD, var);
+      data.setSolverStatus(where, DecompCallbackWhat::MIPVARS_ADD, status);
+   }
+
+   if(where == DecompCallbackWhere::MIPCUTS){
+      const double* x = data.getDoubles(where, DecompCallbackWhat::MIPCUTS_X);
+
+      // dostuff
+      DecompCut *cut;
+
+      data.addCut(where, DecompCallbackWhat::MIPCUTS_ADD, cut);
+   }
+} 
+
 //===========================================================================//
 int main(int argc, char** argv)
 {
@@ -86,7 +219,21 @@ int main(int argc, char** argv)
       }
 
       // callbacks
-      app->setCallbackSolveRelaxed(MyRelaxedSolver);
+      //app->setCallbackSolveRelaxed(MyRelaxedSolver);
+
+      DecompCallbackDataSolStatus data;
+      double x[] = {1,2,3};
+      data.set(x,3,0.1);
+
+      app->callback(DecompCallbackWhere::MIPSOL_FEAS, data);
+      app->setCallback(myCallback);
+      std::cout << data.get() << std::endl;
+      app->callback(DecompCallbackWhere::MIPSOL_FEAS, data);
+      std::cout << data.get() << std::endl;
+
+
+
+
       // callbacks c;
       // DecompCallbackSolveRelaxedWrong fn = std::bind(&callbacks::MyRelaxedSolverCallback, &c, 
       //       std::placeholders::_1, std::placeholders::_2,std::placeholders::_3,std::placeholders::_4,std::placeholders::_5);
